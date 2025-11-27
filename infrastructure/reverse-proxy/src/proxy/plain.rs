@@ -12,6 +12,17 @@ pub struct HostConfigPlain {
     pub proxy_hostname: String,
 }
 
+impl HostConfigPlain {
+    pub fn new_localhost_service(internal_service_port: usize, hostname: &str) -> Self {
+        Self {
+            proxy_internal_address: format!("127.0.0.1:{internal_service_port}"),
+            proxy_hostname: hostname.to_owned(),
+
+            proxy_internal_tls: false,
+        }
+    }
+}
+
 pub fn proxy_service_plain<'server, 'service>(
     server_conf: &'server Arc<ServerConf>,
     listen_addr: &str,

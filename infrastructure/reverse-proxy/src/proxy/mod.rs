@@ -3,11 +3,9 @@ use pingora::proxy::http_proxy_service;
 use pingora::server::configuration::ServerConf;
 use std::sync::Arc;
 
-mod config;
-pub use config::HostConfigTls;
-
-mod callback;
-pub use callback::Callback;
+mod tls;
+pub use tls::HostConfigTls;
+pub use tls::TlsHandler;
 
 mod app;
 use app::ProxyApp;
@@ -36,7 +34,7 @@ where
     let proxy_app = ProxyApp::new(plain_host_config);
     let mut service = http_proxy_service(server_conf, proxy_app);
 
-    let cb = Callback::new(host_configs);
+    let cb = TlsHandler::new(host_configs);
     let cb = Box::new(cb);
     let tls_settings = TlsSettings::with_callbacks(cb).unwrap();
     service.add_tls_with_settings(listen_addr, None, tls_settings);

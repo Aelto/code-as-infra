@@ -27,8 +27,6 @@ impl ProxyHttp for ProxyApp {
     fn new_ctx(&self) {}
 
     async fn upstream_peer(&self, session: &mut Session, _ctx: &mut ()) -> Result<Box<HttpPeer>> {
-        dbg!(session.get_header(header::HOST));
-
         let Some(host_header_value) = session.get_header(header::HOST) else {
             return Err(Box::new(pingora::Error {
                 etype: pingora::ErrorType::HTTPStatus(http::StatusCode::BAD_REQUEST.as_u16()),
@@ -49,15 +47,20 @@ impl ProxyHttp for ProxyApp {
             }));
         };
 
-        let host_header = session.get_header(header::HOST).unwrap().to_str().unwrap();
-
-        let host_config = self
+        let some_host_config = self
             .host_configs
             .iter()
-            .find(|x| x.proxy_hostname == host_header)
-            .unwrap();
+            .find(|x| x.proxy_hostname == host_header);
 
-        dbg!(&host_config.proxy_internal_address);
+        let Some(host_config) = some_host_config else {
+            return Err(Box::new(pingora::Error {
+                etype: pingora::ErrorType::HTTPStatus(http::StatusCode::BAD_REQUEST.as_u16()),
+                esource: pingora::ErrorSource::Upstream,
+                retry: pingora::RetryType::Decided(false),
+                cause: None,
+                context: Some(pingora::ImmutStr::Static("HOST header invalid hostname")),
+            }));
+        };
 
         let proxy_to = HttpPeer::new(
             host_config.proxy_internal_address.as_str(),

@@ -1,38 +1,37 @@
 use pingora::prelude::*;
 
 mod filtering;
-mod proxy;
+pub mod proxy;
 
 // references:
 // - https://github.com/koompi/pingora-proxy-server/blob/master/Cargo.toml
 // - https://github.com/randommm/pingora-reverse-proxy/blob/master/src/service.rs
 
-pub fn start_server() {
-    let port_http = 80;
+pub trait WithServerService: WithReverseProxy {}
+
+pub trait WithReverseProxy {
+    fn register_http(&self, _: &mut Vec<proxy::HostConfigPlain>) {}
+    fn register_https(&self, _: &mut Vec<proxy::HostConfigTls>) {}
+}
+
+pub fn start_server(services: Vec<&dyn WithServerService>) {
     let port_https = 443;
 
     let mut server = Server::new(None).expect("pingora server creation");
     server.bootstrap();
 
+    let mut proxy_tls_configs = Vec::new();
+    let mut proxy_plain_configs = Vec::new();
+
+    for service in services {
+        WithReverseProxy::register_http(service, &mut proxy_plain_configs);
+        WithReverseProxy::register_https(service, &mut proxy_tls_configs);
+    }
+
     let proxy_service_ssl = proxy::proxy_service_tls(
         &server.configuration,
         &format!("0.0.0.0:{port_https}"),
-        vec![
-            // proxy::HostConfigTls {
-            //     proxy_internal_address: "127.0.0.1:4000".to_owned(),
-            //     proxy_internal_tls: false,
-            //     proxy_hostname: "somedomain.com".to_owned(),
-            //     cert_path: format!("{}/keys/some_domain_cert.crt", env!("CARGO_MANIFEST_DIR")),
-            //     key_path: format!("{}/keys/some_domain_key.pem", env!("CARGO_MANIFEST_DIR")),
-            // },
-            // proxy::HostConfigTls {
-            //     proxy_internal_address: "one.one.one.one:443".to_owned(),
-            //     proxy_internal_tls: true,
-            //     proxy_hostname: "one.one.one.one".to_owned(),
-            //     cert_path: format!("{}/keys/one_cert.crt", env!("CARGO_MANIFEST_DIR")),
-            //     key_path: format!("{}/keys/one_key.pem", env!("CARGO_MANIFEST_DIR")),
-            // },
-        ],
+        proxy_tls_configs,
     );
 
     let proxy_service_plain = proxy::proxy_service_plain(
