@@ -1,0 +1,5 @@
+set shell := ["nu", "-c"]
+
+# requires `rustup target add aarch64-unknown-linux-gnu`
+build-rpi:
+  cargo build --target aarch64-unknown-linux-gnu
