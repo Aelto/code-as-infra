@@ -1,0 +1,18 @@
+[package]
+name = "cai-reverse-proxy"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+pingora = { version="0.6.0", features=["lb", "proxy", "openssl"] }
+# pingora-core = "0.6.0"
+# pingora-http = "0.6.0"
+# pingora-proxy = "0.6.0"
+# pingora-openssl = "0.6.0"
+async-trait = "0.1.89"
+http = "1.4.0"
+
+
+[[bin]]
+name = "cai-reverse-proxy-example"
+path = "src/main.rs"
