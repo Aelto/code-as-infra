@@ -5,10 +5,10 @@ impl cai_reverse_proxy::WithServerService for ModspotCdnService {}
 impl cai_reverse_proxy::WithReverseProxy for ModspotCdnService {
     fn register_https(&self, services: &mut Vec<proxy::HostConfigTls>) {
         services.push(proxy::HostConfigTls::new_localhost_service(
-            4000,
+            5010,
             "cdn.modspot.dev",
-            "/etc/letsencrypt/live/cdn.modspot.dev.crt",
-            "/etc/letsencrypt/live/cdn.modspot.dev.pem",
+            "/etc/letsencrypt/live/cdn.modspot.dev/fullchain.pem",
+            "/etc/letsencrypt/live/cdn.modspot.dev/privkey.pem",
         ));
     }
 }
@@ -20,8 +20,8 @@ impl cai_reverse_proxy::WithReverseProxy for PhotographyWebsiteService {
         services.push(proxy::HostConfigTls::new_localhost_service(
             5001,
             "t.hottou.fr",
-            "/etc/letsencrypt/live/t.hottou.fr.crt",
-            "/etc/letsencrypt/live/t.hottou.fr.pem",
+            "/etc/letsencrypt/live/t.hottou.fr/fullchain.pem",
+            "/etc/letsencrypt/live/t.hottou.fr/privkey.pem",
         ));
     }
 }
@@ -30,5 +30,8 @@ fn main() {
     let services: Vec<&dyn WithServerService> =
         vec![&ModspotCdnService, &PhotographyWebsiteService];
 
-    cai_reverse_proxy::start_server(services);
+    type ContextHttps = proxy::context::ProxyCompression;
+    type ContextHttp = ();
+
+    cai_reverse_proxy::start_server::<ContextHttps, ContextHttp>(services);
 }

@@ -1,8 +1,11 @@
+use std::marker::PhantomData;
+
 use async_trait::async_trait;
 use http::Response;
 use http::StatusCode;
 use http::header;
 use pingora::apps::http_app::ServeHttp;
+use pingora::http::ResponseHeader;
 use pingora::prelude::HttpPeer;
 use pingora::prelude::ProxyHttp;
 use pingora::prelude::Result;
@@ -11,22 +14,69 @@ use pingora::protocols::http::ServerSession;
 
 use crate::proxy::HostConfigPlain;
 
-pub struct ProxyApp {
+pub struct ProxyApp<CONTEXT>
+where
+    CONTEXT: super::context::WithProxyContext + Send + Sync,
+{
     host_configs: Vec<HostConfigPlain>,
+
+    context_type: PhantomData<CONTEXT>,
 }
 
-impl ProxyApp {
+impl<CONTEXT> ProxyApp<CONTEXT>
+where
+    CONTEXT: super::context::WithProxyContext + Send + Sync,
+{
     pub fn new(host_configs: Vec<HostConfigPlain>) -> Self {
-        ProxyApp { host_configs }
+        ProxyApp {
+            host_configs,
+            context_type: PhantomData::default(),
+        }
     }
 }
 
 #[async_trait]
-impl ProxyHttp for ProxyApp {
-    type CTX = ();
-    fn new_ctx(&self) {}
+impl<CONTEXT> ProxyHttp for ProxyApp<CONTEXT>
+where
+    CONTEXT: super::context::WithProxyContext + Send + Sync,
+{
+    type CTX = CONTEXT;
 
-    async fn upstream_peer(&self, session: &mut Session, _ctx: &mut ()) -> Result<Box<HttpPeer>> {
+    fn new_ctx(&self) -> CONTEXT {
+        CONTEXT::new_ctx()
+    }
+
+    fn response_body_filter(
+        &self,
+        session: &mut Session,
+        body: &mut Option<bytes::Bytes>,
+        end_of_stream: bool,
+        ctx: &mut Self::CTX,
+    ) -> Result<Option<std::time::Duration>>
+    where
+        Self::CTX: Send + Sync,
+    {
+        Self::CTX::response_body_filter(session, body, end_of_stream, ctx)
+    }
+
+    async fn response_filter(
+        &self,
+        _session: &mut Session,
+        _upstream_response: &mut ResponseHeader,
+        _ctx: &mut Self::CTX,
+    ) -> Result<()>
+    where
+        Self: Send + Sync,
+    {
+        Self::CTX::response_filter(_session, _upstream_response, _ctx).await?;
+        Ok(())
+    }
+
+    async fn upstream_peer(
+        &self,
+        session: &mut Session,
+        _ctx: &mut CONTEXT,
+    ) -> Result<Box<HttpPeer>> {
         let Some(host_header_value) = session.get_header(header::HOST) else {
             return Err(Box::new(pingora::Error {
                 etype: pingora::ErrorType::HTTPStatus(http::StatusCode::BAD_REQUEST.as_u16()),

@@ -10,17 +10,23 @@ pub use tls::TlsHandler;
 mod app;
 use app::ProxyApp;
 
+pub mod context;
+
 mod plain;
 pub use plain::HostConfigPlain;
 pub use plain::proxy_service_plain;
 
-pub fn proxy_service_tls<'server, 'service>(
+use crate::proxy::context::WithProxyContext;
+
+// TODO: move it to the tls module
+pub fn proxy_service_tls<'server, 'service, CONTEXT>(
     server_conf: &'server Arc<ServerConf>,
     listen_addr: &str,
     host_configs: Vec<HostConfigTls>,
-) -> impl pingora::services::Service + use<'service>
+) -> impl pingora::services::Service + use<'service, CONTEXT>
 where
     'service: 'server,
+    CONTEXT: WithProxyContext + 'static,
 {
     let plain_host_config = host_configs
         .iter()
@@ -31,7 +37,7 @@ where
         })
         .collect();
 
-    let proxy_app = ProxyApp::new(plain_host_config);
+    let proxy_app = ProxyApp::<CONTEXT>::new(plain_host_config);
     let mut service = http_proxy_service(server_conf, proxy_app);
 
     let cb = TlsHandler::new(host_configs);

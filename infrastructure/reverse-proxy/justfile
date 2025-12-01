@@ -1,5 +1,15 @@
 set shell := ["nu", "-c"]
 
-# requires `rustup target add aarch64-unknown-linux-gnu`
-build-rpi:
-  cargo build --target aarch64-unknown-linux-gnu
+list:
+  just --list
+
+# requires podman and `cargo install cross-rs`
+build-cross-rpi:
+  cross build --target=aarch64-unknown-linux-gnu
+
+deploy-build-cross-rpi:
+  scp ../../target/aarch64-unknown-linux-gnu/debug/cai-reverse-proxy-example rpi:~/cai-reverse-proxy-example
+  ssh rpi "sudo chmod +x ~/cai-reverse-proxy-example"
+
+podman-start:
+  podman machine start

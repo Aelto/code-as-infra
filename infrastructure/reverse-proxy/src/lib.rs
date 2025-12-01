@@ -14,7 +14,11 @@ pub trait WithReverseProxy {
     fn register_https(&self, _: &mut Vec<proxy::HostConfigTls>) {}
 }
 
-pub fn start_server(services: Vec<&dyn WithServerService>) {
+pub fn start_server<CONTEXTTLS, CONTEXTPLAIN>(services: Vec<&dyn WithServerService>)
+where
+    CONTEXTTLS: proxy::context::WithProxyContext + 'static,
+    CONTEXTPLAIN: proxy::context::WithProxyContext + 'static,
+{
     let port_https = 443;
 
     let mut server = Server::new(None).expect("pingora server creation");
@@ -28,13 +32,13 @@ pub fn start_server(services: Vec<&dyn WithServerService>) {
         WithReverseProxy::register_https(service, &mut proxy_tls_configs);
     }
 
-    let proxy_service_ssl = proxy::proxy_service_tls(
+    let proxy_service_ssl = proxy::proxy_service_tls::<CONTEXTTLS>(
         &server.configuration,
         &format!("0.0.0.0:{port_https}"),
         proxy_tls_configs,
     );
 
-    let proxy_service_plain = proxy::proxy_service_plain(
+    let proxy_service_plain = proxy::proxy_service_plain::<CONTEXTPLAIN>(
         &server.configuration,
         "0.0.0.0:8082",
         vec![proxy::HostConfigPlain {
