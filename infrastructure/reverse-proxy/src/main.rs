@@ -56,15 +56,18 @@ impl proxy::context::WithRefererFilterOptions for ModspotRefererFilter {
 }
 
 fn main() {
-    let services: Vec<&dyn WithServerService> =
-        vec![&ModspotCdnService, &PhotographyWebsiteService];
+    let mut server = cai_reverse_proxy::server();
 
-    type ContextHttps = (
+    cai_reverse_proxy::service::<(
         proxy::context::ProxyCompression,
         proxy::context::RefererFilter<ModspotRefererFilter>,
         proxy::context::RateLimit<ModspotSignupLimiting>,
-    );
-    type ContextHttp = ();
+    )>(&mut server, &ModspotCdnService);
 
-    cai_reverse_proxy::start_server::<ContextHttps, ContextHttp>(services);
+    cai_reverse_proxy::service::<proxy::context::ProxyCompression>(
+        &mut server,
+        &PhotographyWebsiteService,
+    );
+
+    server.run_forever();
 }
