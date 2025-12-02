@@ -8,6 +8,7 @@ pingora = { version="0.6.0", features=["lb", "proxy", "openssl"] }
 bytes = "1.0"
 async-trait = "0.1.89"
 http = "1.4.0"
+pingora-limits = "0.6.0"
 
 
 [[bin]]

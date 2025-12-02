@@ -26,11 +26,27 @@ impl cai_reverse_proxy::WithReverseProxy for PhotographyWebsiteService {
     }
 }
 
+struct ModspotSignupLimiting;
+impl proxy::context::WithRateLimitOptions for ModspotSignupLimiting {
+    const MAXIMUM_REQ_COUNT: isize = 3;
+
+    fn is_host_limited(domain: &http::HeaderValue) -> bool {
+        domain == "modspot.dev"
+    }
+
+    fn is_uri_path_limited(path: &str) -> bool {
+        path.starts_with("/frg/SignupForm/invite/send")
+    }
+}
+
 fn main() {
     let services: Vec<&dyn WithServerService> =
         vec![&ModspotCdnService, &PhotographyWebsiteService];
 
-    type ContextHttps = proxy::context::ProxyCompression;
+    type ContextHttps = (
+        proxy::context::ProxyCompression,
+        proxy::context::RateLimit<ModspotSignupLimiting>,
+    );
     type ContextHttp = ();
 
     cai_reverse_proxy::start_server::<ContextHttps, ContextHttp>(services);
