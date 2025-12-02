@@ -39,12 +39,29 @@ impl proxy::context::WithRateLimitOptions for ModspotSignupLimiting {
     }
 }
 
+struct ModspotRefererFilter;
+impl proxy::context::WithRefererFilterOptions for ModspotRefererFilter {
+    fn is_referer_allowed(referer: Option<&http::HeaderValue>) -> bool {
+        match referer {
+            None => false,
+            Some(value) => {
+                let bytes = value.as_bytes();
+
+                bytes.starts_with(b"https://cdn.modspot.dev")
+                    || bytes.starts_with(b"https://api.modspot.dev")
+                    || bytes.starts_with(b"https://modspot.dev")
+            }
+        }
+    }
+}
+
 fn main() {
     let services: Vec<&dyn WithServerService> =
         vec![&ModspotCdnService, &PhotographyWebsiteService];
 
     type ContextHttps = (
         proxy::context::ProxyCompression,
+        proxy::context::RefererFilter<ModspotRefererFilter>,
         proxy::context::RateLimit<ModspotSignupLimiting>,
     );
     type ContextHttp = ();
