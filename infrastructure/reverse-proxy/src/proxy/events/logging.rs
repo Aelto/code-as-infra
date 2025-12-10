@@ -28,8 +28,8 @@ impl super::WithProxyEvents for Logger {
 
 use flexi_logger::writers::FileLogWriter;
 
-pub fn global_logger() -> flexi_logger::Logger {
-    flexi_logger::Logger::try_with_str("info")
+pub fn global_logger(services: impl WithServiceLogging) -> flexi_logger::Logger {
+    let logger = flexi_logger::Logger::try_with_str("info")
         .expect("flexi_logger creation error")
         .log_to_file(
             flexi_logger::FileSpec::default()
@@ -43,9 +43,12 @@ pub fn global_logger() -> flexi_logger::Logger {
             flexi_logger::Cleanup::KeepForDays(15),
         )
         // do not truncate the file when the program is restarted
-        .append()
+        .append();
+
+    services.enable_logging(logger)
 }
 
+#[deprecated]
 pub fn enable_service_logging<SERVICE: crate::WithReverseProxy>(
     mut logger: flexi_logger::Logger,
     service: &SERVICE,
@@ -82,26 +85,76 @@ fn file_writer(hostname: &str) -> Box<FileLogWriter> {
     )
 }
 
-pub trait WithLoggerOptions: Send + Sync {
-    fn hostname() -> &'static str;
+pub trait WithServiceLogging {
+    fn enable_logging(&self, logger: flexi_logger::Logger) -> flexi_logger::Logger;
+}
 
-    fn file_writer() -> Box<FileLogWriter> {
-        Box::new(
-            FileLogWriter::builder(
-                flexi_logger::FileSpec::default()
-                    .directory("logs")
-                    .basename(Self::hostname())
-                    .discriminant(Self::hostname())
-                    .suffix("access.log"),
-            )
-            .append()
-            .rotate(
-                flexi_logger::Criterion::Age(flexi_logger::Age::Day),
-                flexi_logger::Naming::Timestamps,
-                flexi_logger::Cleanup::KeepForDays(15),
-            )
-            .try_build()
-            .unwrap(),
-        )
+impl WithServiceLogging for () {
+    fn enable_logging(&self, logger: flexi_logger::Logger) -> flexi_logger::Logger {
+        logger
+    }
+}
+
+impl<S: crate::WithReverseProxy> WithServiceLogging for &S {
+    fn enable_logging(&self, mut logger: flexi_logger::Logger) -> flexi_logger::Logger {
+        let mut configs = Vec::new();
+        self.register_https(&mut configs);
+
+        for config in configs {
+            let hostname = &config.proxy_hostname;
+
+            logger = logger.add_writer(hostname, file_writer(hostname));
+        }
+
+        logger
+    }
+}
+
+impl<S1: crate::WithReverseProxy, S2: crate::WithReverseProxy> WithServiceLogging for (&S1, &S2) {
+    fn enable_logging(&self, mut logger: flexi_logger::Logger) -> flexi_logger::Logger {
+        logger = self.0.enable_logging(logger);
+        self.1.enable_logging(logger)
+    }
+}
+
+impl<S1: crate::WithReverseProxy, S2: crate::WithReverseProxy, S3: crate::WithReverseProxy>
+    WithServiceLogging for (&S1, &S2, &S3)
+{
+    fn enable_logging(&self, mut logger: flexi_logger::Logger) -> flexi_logger::Logger {
+        logger = self.0.enable_logging(logger);
+        logger = self.1.enable_logging(logger);
+        self.2.enable_logging(logger)
+    }
+}
+
+impl<
+    S1: crate::WithReverseProxy,
+    S2: crate::WithReverseProxy,
+    S3: crate::WithReverseProxy,
+    S4: crate::WithReverseProxy,
+> WithServiceLogging for (&S1, &S2, &S3, &S4)
+{
+    fn enable_logging(&self, mut logger: flexi_logger::Logger) -> flexi_logger::Logger {
+        logger = self.0.enable_logging(logger);
+        logger = self.1.enable_logging(logger);
+        logger = self.2.enable_logging(logger);
+        self.3.enable_logging(logger)
+    }
+}
+
+impl<
+    S1: crate::WithReverseProxy,
+    S2: crate::WithReverseProxy,
+    S3: crate::WithReverseProxy,
+    S4: crate::WithReverseProxy,
+    S5: crate::WithReverseProxy,
+> WithServiceLogging for (&S1, &S2, &S3, &S4, &S5)
+{
+    fn enable_logging(&self, mut logger: flexi_logger::Logger) -> flexi_logger::Logger {
+        logger = self.0.enable_logging(logger);
+        logger = self.1.enable_logging(logger);
+        logger = self.2.enable_logging(logger);
+        logger = self.3.enable_logging(logger);
+        self.4.enable_logging(logger)
     }
 }

@@ -59,9 +59,7 @@ fn main() {
     let mut server = cai_reverse_proxy::server();
 
     use cai_reverse_proxy::proxy::events::logging;
-    let logger = logging::global_logger();
-    let logger = logging::enable_service_logging(logger, &PhotographyWebsiteService);
-    let logger = logging::enable_service_logging(logger, &ModspotCdnService);
+    let logger = logging::global_logger((&PhotographyWebsiteService, &ModspotCdnService));
 
     cai_reverse_proxy::service::<
         (
