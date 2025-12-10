@@ -37,6 +37,10 @@ where
             events: EVENTS::new(),
         }
     }
+
+    pub fn get_host_by_index(&self, index: usize) -> Option<&HostConfigPlain> {
+        self.host_configs.get(index)
+    }
 }
 
 #[async_trait]
@@ -79,35 +83,10 @@ where
 
     async fn upstream_peer(
         &self,
-        session: &mut Session,
-        _ctx: &mut Self::CTX,
+        _session: &mut Session,
+        ctx: &mut Self::CTX,
     ) -> Result<Box<HttpPeer>> {
-        let Some(host_header_value) = session.get_header(header::HOST) else {
-            return Err(Box::new(pingora::Error {
-                etype: pingora::ErrorType::HTTPStatus(http::StatusCode::BAD_REQUEST.as_u16()),
-                esource: pingora::ErrorSource::Upstream,
-                retry: pingora::RetryType::Decided(false),
-                cause: None,
-                context: Some(pingora::ImmutStr::Static("HOST header missing")),
-            }));
-        };
-
-        let Ok(host_header) = host_header_value.to_str() else {
-            return Err(Box::new(pingora::Error {
-                etype: pingora::ErrorType::HTTPStatus(http::StatusCode::BAD_REQUEST.as_u16()),
-                esource: pingora::ErrorSource::Upstream,
-                retry: pingora::RetryType::Decided(false),
-                cause: None,
-                context: Some(pingora::ImmutStr::Static("HOST header invalid value")),
-            }));
-        };
-
-        let some_host_config = self
-            .host_configs
-            .iter()
-            .find(|x| x.proxy_hostname == host_header);
-
-        let Some(host_config) = some_host_config else {
+        let Some(host_config) = ctx.hostname_cache().host(&self) else {
             return Err(Box::new(pingora::Error {
                 etype: pingora::ErrorType::HTTPStatus(http::StatusCode::BAD_REQUEST.as_u16()),
                 esource: pingora::ErrorSource::Upstream,
@@ -125,6 +104,28 @@ where
 
         let peer = Box::new(proxy_to);
         Ok(peer)
+    }
+
+    async fn request_filter(&self, session: &mut Session, ctx: &mut Self::CTX) -> Result<bool>
+    where
+        Self::CTX: Send + Sync,
+    {
+        // perform an initial HOSTNAME filtering
+        let some_host_config = session
+            .get_header(header::HOST)
+            .and_then(|v| v.to_str().ok())
+            .and_then(|host_header| {
+                self.host_configs
+                    .iter()
+                    .position(|x| x.proxy_hostname == host_header)
+            });
+
+        let Some(index) = some_host_config else {
+            return Ok(true);
+        };
+
+        ctx.hostname_cache().cache_host(index);
+        CONTEXT::request_filter(session, &mut ctx.public).await
     }
 
     async fn logging(

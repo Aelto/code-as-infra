@@ -76,13 +76,22 @@ impl TlsAccept for TlsHandler {
         };
 
         let Some((_, cert, key)) = self.0.iter().find(|x| x.0 == sni_provided) else {
+            println!("TlsAccept failure, no cert/key found for {sni_provided}");
+
+            for s in &self.0 {
+                println!(" - available sni: {}", &s.0);
+            }
+
             return;
         };
 
-        if tls::ext::ssl_use_certificate(ssl, cert).is_ok() {
-            if tls::ext::ssl_use_private_key(ssl, key).is_err() {
-                println!("error ssl_use_private_key");
-            }
+        if let Err(e) = tls::ext::ssl_use_certificate(ssl, cert) {
+            println!("error ssl_use_certificate: {e}");
+            return;
+        }
+
+        if let Err(e) = tls::ext::ssl_use_private_key(ssl, key) {
+            println!("error ssl_use_private_key: {e}");
         }
     }
 }
