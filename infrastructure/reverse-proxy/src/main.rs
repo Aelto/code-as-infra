@@ -58,16 +58,25 @@ impl proxy::context::WithRefererFilterOptions for ModspotRefererFilter {
 fn main() {
     let mut server = cai_reverse_proxy::server();
 
-    cai_reverse_proxy::service::<(
-        proxy::context::ProxyCompression,
-        proxy::context::RefererFilter<ModspotRefererFilter>,
-        proxy::context::RateLimit<ModspotSignupLimiting>,
-    )>(&mut server, &ModspotCdnService);
+    use cai_reverse_proxy::proxy::events::logging;
+    let logger = logging::global_logger();
+    let logger = logging::enable_service_logging(logger, &PhotographyWebsiteService);
+    let logger = logging::enable_service_logging(logger, &ModspotCdnService);
 
-    cai_reverse_proxy::service::<proxy::context::ProxyCompression>(
+    cai_reverse_proxy::service::<
+        (
+            proxy::context::ProxyCompression,
+            proxy::context::RefererFilter<ModspotRefererFilter>,
+            proxy::context::RateLimit<ModspotSignupLimiting>,
+        ),
+        logging::Logger,
+    >(&mut server, &ModspotCdnService);
+
+    cai_reverse_proxy::service::<proxy::context::ProxyCompression, logging::Logger>(
         &mut server,
         &PhotographyWebsiteService,
     );
 
+    logger.start().expect("flexi_logger start error");
     server.run_forever();
 }

@@ -3,10 +3,6 @@ use pingora::prelude::*;
 mod filtering;
 pub mod proxy;
 
-// references:
-// - https://github.com/koompi/pingora-proxy-server/blob/master/Cargo.toml
-// - https://github.com/randommm/pingora-reverse-proxy/blob/master/src/service.rs
-
 pub trait WithServerService: WithReverseProxy {}
 
 pub trait WithReverseProxy {
@@ -20,15 +16,18 @@ pub fn server() -> pingora::server::Server {
     server
 }
 
-pub fn service<CONTEXT>(server: &mut pingora::server::Server, service: &impl WithServerService)
-where
+pub fn service<CONTEXT, EVENTS>(
+    server: &mut pingora::server::Server,
+    service: &impl WithServerService,
+) where
     CONTEXT: proxy::context::WithProxyContext + 'static,
+    EVENTS: proxy::events::WithProxyEvents + 'static,
 {
     let port_https = 443;
     let mut proxy_tls_configs = Vec::new();
     WithReverseProxy::register_https(service, &mut proxy_tls_configs);
 
-    let proxy_service_ssl = proxy::proxy_service_tls::<CONTEXT>(
+    let proxy_service_ssl = proxy::proxy_service_tls::<CONTEXT, EVENTS>(
         &server.configuration,
         &format!("0.0.0.0:{port_https}"),
         proxy_tls_configs,

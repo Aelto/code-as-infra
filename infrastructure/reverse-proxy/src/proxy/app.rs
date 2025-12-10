@@ -14,36 +14,41 @@ use pingora::protocols::http::ServerSession;
 
 use crate::proxy::HostConfigPlain;
 
-pub struct ProxyApp<CONTEXT>
+pub struct ProxyApp<CONTEXT, EVENTS>
 where
     CONTEXT: super::context::WithProxyContext + Send + Sync,
+    EVENTS: super::events::WithProxyEvents + Send + Sync,
 {
     host_configs: Vec<HostConfigPlain>,
 
     context_type: PhantomData<CONTEXT>,
+    events: EVENTS,
 }
 
-impl<CONTEXT> ProxyApp<CONTEXT>
+impl<CONTEXT, EVENTS> ProxyApp<CONTEXT, EVENTS>
 where
     CONTEXT: super::context::WithProxyContext + Send + Sync,
+    EVENTS: super::events::WithProxyEvents + Send + Sync,
 {
     pub fn new(host_configs: Vec<HostConfigPlain>) -> Self {
         ProxyApp {
             host_configs,
             context_type: PhantomData::default(),
+            events: EVENTS::new(),
         }
     }
 }
 
 #[async_trait]
-impl<CONTEXT> ProxyHttp for ProxyApp<CONTEXT>
+impl<CONTEXT, EVENTS> ProxyHttp for ProxyApp<CONTEXT, EVENTS>
 where
     CONTEXT: super::context::WithProxyContext + Send + Sync,
+    EVENTS: super::events::WithProxyEvents + Send + Sync,
 {
-    type CTX = CONTEXT;
+    type CTX = super::AppContext<CONTEXT>;
 
-    fn new_ctx(&self) -> CONTEXT {
-        CONTEXT::new_ctx()
+    fn new_ctx(&self) -> Self::CTX {
+        super::AppContext::new(CONTEXT::new_ctx())
     }
 
     fn response_body_filter(
@@ -56,26 +61,26 @@ where
     where
         Self::CTX: Send + Sync,
     {
-        Self::CTX::response_body_filter(session, body, end_of_stream, ctx)
+        CONTEXT::response_body_filter(session, body, end_of_stream, &mut ctx.public)
     }
 
     async fn response_filter(
         &self,
         _session: &mut Session,
         _upstream_response: &mut ResponseHeader,
-        _ctx: &mut Self::CTX,
+        ctx: &mut Self::CTX,
     ) -> Result<()>
     where
         Self: Send + Sync,
     {
-        Self::CTX::response_filter(_session, _upstream_response, _ctx).await?;
+        CONTEXT::response_filter(_session, _upstream_response, &mut ctx.public).await?;
         Ok(())
     }
 
     async fn upstream_peer(
         &self,
         session: &mut Session,
-        _ctx: &mut CONTEXT,
+        _ctx: &mut Self::CTX,
     ) -> Result<Box<HttpPeer>> {
         let Some(host_header_value) = session.get_header(header::HOST) else {
             return Err(Box::new(pingora::Error {
@@ -121,8 +126,24 @@ where
         let peer = Box::new(proxy_to);
         Ok(peer)
     }
+
+    async fn logging(
+        &self,
+        _session: &mut Session,
+        _e: Option<&pingora::Error>,
+        _ctx: &mut Self::CTX,
+    ) where
+        Self::CTX: Send + Sync,
+    {
+        for host in &self.host_configs {
+            let hostname = &host.proxy_hostname;
+
+            self.events.logging(_session, _e, &hostname);
+        }
+    }
 }
 
+#[allow(unused)]
 pub struct RedirectApp;
 
 #[async_trait]

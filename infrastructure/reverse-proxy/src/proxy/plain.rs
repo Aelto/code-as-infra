@@ -3,6 +3,8 @@ use std::sync::Arc;
 use pingora::proxy::http_proxy_service;
 use pingora::server::configuration::ServerConf;
 
+use crate::proxy::events::WithProxyEvents;
+
 use super::ProxyApp;
 use super::context::WithProxyContext;
 
@@ -24,16 +26,17 @@ impl HostConfigPlain {
     }
 }
 
-pub fn proxy_service_plain<'server, 'service, CONTEXT>(
+pub fn proxy_service_plain<'server, 'service, CONTEXT, EVENTS>(
     server_conf: &'server Arc<ServerConf>,
     listen_addr: &str,
     host_configs: Vec<HostConfigPlain>,
-) -> impl pingora::services::Service + use<'service, CONTEXT>
+) -> impl pingora::services::Service + use<'service, CONTEXT, EVENTS>
 where
     'service: 'server,
     CONTEXT: WithProxyContext + 'static,
+    EVENTS: WithProxyEvents + 'static,
 {
-    let proxy_app = ProxyApp::<CONTEXT>::new(host_configs.clone());
+    let proxy_app = ProxyApp::<CONTEXT, EVENTS>::new(host_configs.clone());
     let mut service = http_proxy_service(server_conf, proxy_app);
 
     service.add_tcp(listen_addr);

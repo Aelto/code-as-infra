@@ -9,6 +9,8 @@ bytes = "1.0"
 async-trait = "0.1.89"
 http = "1.4.0"
 pingora-limits = "0.6.0"
+log = "0.4.29"
+flexi_logger = "0.31.7"
 
 
 [[bin]]
