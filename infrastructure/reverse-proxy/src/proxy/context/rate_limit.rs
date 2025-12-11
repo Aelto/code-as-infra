@@ -11,17 +11,19 @@ static RATE_LIMITER: LazyLock<Rate> = LazyLock::new(|| Rate::new(Duration::from_
 pub struct RateLimit<Options: WithRateLimitOptions> {
     options: PhantomData<Options>,
 }
-
-impl<Options: WithRateLimitOptions> super::WithProxyContext for RateLimit<Options> {
+impl<Options: WithRateLimitOptions> super::WithProxyContextCreation for RateLimit<Options> {
     fn new_ctx() -> Self {
         Self {
             options: PhantomData::default(),
         }
     }
+}
 
+#[async_trait::async_trait]
+impl<Options: WithRateLimitOptions> super::WithProxyContext for RateLimit<Options> {
     async fn request_filter(
+        &mut self,
         session: &mut pingora::prelude::Session,
-        _ctx: &mut Self,
     ) -> pingora::Result<bool>
     where
         Self: Send + Sync,

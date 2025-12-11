@@ -7,16 +7,19 @@ pub struct RefererFilter<Options: WithRefererFilterOptions> {
     options: PhantomData<Options>,
 }
 
-impl<Options: WithRefererFilterOptions> super::WithProxyContext for RefererFilter<Options> {
+impl<Options: WithRefererFilterOptions> super::WithProxyContextCreation for RefererFilter<Options> {
     fn new_ctx() -> Self {
         Self {
             options: PhantomData::default(),
         }
     }
+}
 
+#[async_trait::async_trait]
+impl<Options: WithRefererFilterOptions> super::WithProxyContext for RefererFilter<Options> {
     async fn request_filter(
+        &mut self,
         session: &mut pingora::prelude::Session,
-        _ctx: &mut Self,
     ) -> pingora::Result<bool>
     where
         Self: Send + Sync,

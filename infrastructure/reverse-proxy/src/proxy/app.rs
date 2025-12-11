@@ -12,28 +12,29 @@ use pingora::prelude::Result;
 use pingora::prelude::Session;
 use pingora::protocols::http::ServerSession;
 
+use crate::WithServerService;
 use crate::proxy::HostConfigPlain;
 
-pub struct ProxyApp<CONTEXT, EVENTS>
+pub struct ProxyApp<EVENTS, SERVICE>
 where
-    CONTEXT: super::context::WithProxyContext + Send + Sync,
     EVENTS: super::events::WithProxyEvents + Send + Sync,
+    SERVICE: WithServerService + Send + Sync + 'static,
 {
     host_configs: Vec<HostConfigPlain>,
 
-    context_type: PhantomData<CONTEXT>,
+    service_type: PhantomData<SERVICE>,
     events: EVENTS,
 }
 
-impl<CONTEXT, EVENTS> ProxyApp<CONTEXT, EVENTS>
+impl<EVENTS, SERVICE> ProxyApp<EVENTS, SERVICE>
 where
-    CONTEXT: super::context::WithProxyContext + Send + Sync,
     EVENTS: super::events::WithProxyEvents + Send + Sync,
+    SERVICE: WithServerService + Send + Sync + 'static,
 {
     pub fn new(host_configs: Vec<HostConfigPlain>) -> Self {
         ProxyApp {
             host_configs,
-            context_type: PhantomData::default(),
+            service_type: PhantomData::default(),
             events: EVENTS::new(),
         }
     }
@@ -44,15 +45,15 @@ where
 }
 
 #[async_trait]
-impl<CONTEXT, EVENTS> ProxyHttp for ProxyApp<CONTEXT, EVENTS>
+impl<EVENTS, SERVICE> ProxyHttp for ProxyApp<EVENTS, SERVICE>
 where
-    CONTEXT: super::context::WithProxyContext + Send + Sync,
     EVENTS: super::events::WithProxyEvents + Send + Sync,
+    SERVICE: WithServerService + Send + Sync + 'static,
 {
-    type CTX = super::AppContext<CONTEXT>;
+    type CTX = super::AppContext;
 
     fn new_ctx(&self) -> Self::CTX {
-        super::AppContext::new(CONTEXT::new_ctx())
+        super::AppContext::new(())
     }
 
     fn response_body_filter(
@@ -65,7 +66,8 @@ where
     where
         Self::CTX: Send + Sync,
     {
-        CONTEXT::response_body_filter(session, body, end_of_stream, &mut ctx.public)
+        ctx.public
+            .response_body_filter(session, body, end_of_stream)
     }
 
     async fn response_filter(
@@ -77,7 +79,9 @@ where
     where
         Self: Send + Sync,
     {
-        CONTEXT::response_filter(_session, _upstream_response, &mut ctx.public).await?;
+        ctx.public
+            .response_filter(_session, _upstream_response)
+            .await?;
         Ok(())
     }
 
@@ -111,21 +115,28 @@ where
         Self::CTX: Send + Sync,
     {
         // perform an initial HOSTNAME filtering
-        let some_host_config = session
+        let Some(host_header) = session
             .get_header(header::HOST)
             .and_then(|v| v.to_str().ok())
-            .and_then(|host_header| {
-                self.host_configs
-                    .iter()
-                    .position(|x| x.proxy_hostname == host_header)
-            });
+        else {
+            return Ok(true);
+        };
+
+        let some_host_config = self
+            .host_configs
+            .iter()
+            .position(|x| x.proxy_hostname == host_header);
 
         let Some(index) = some_host_config else {
             return Ok(true);
         };
 
         ctx.hostname_cache().cache_host(index);
-        CONTEXT::request_filter(session, &mut ctx.public).await
+
+        let context = SERVICE::host_proxy(host_header);
+        ctx.public = context;
+
+        ctx.public.request_filter(session).await
     }
 
     async fn logging(

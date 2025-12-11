@@ -1,28 +1,36 @@
-use cai_reverse_proxy::*;
+use cai_reverse_proxy::{proxy::context::WithProxyContextCreation, *};
 
-struct ModspotCdnService;
-impl cai_reverse_proxy::WithServerService for ModspotCdnService {}
-impl cai_reverse_proxy::WithReverseProxy for ModspotCdnService {
-    fn register_https(&self, services: &mut Vec<proxy::HostConfigTls>) {
+struct ProxyService;
+impl cai_reverse_proxy::WithServerService for ProxyService {}
+impl cai_reverse_proxy::WithReverseProxy for ProxyService {
+    fn register_https(services: &mut Vec<proxy::HostConfigTls>) {
         services.push(proxy::HostConfigTls::new_localhost_service(
             5010,
             "cdn.modspot.dev",
             "/etc/letsencrypt/live/cdn.modspot.dev/fullchain.pem",
             "/etc/letsencrypt/live/cdn.modspot.dev/privkey.pem",
         ));
-    }
-}
 
-struct PhotographyWebsiteService;
-impl cai_reverse_proxy::WithServerService for PhotographyWebsiteService {}
-impl cai_reverse_proxy::WithReverseProxy for PhotographyWebsiteService {
-    fn register_https(&self, services: &mut Vec<proxy::HostConfigTls>) {
         services.push(proxy::HostConfigTls::new_localhost_service(
             5001,
             "t.hottou.fr",
             "/etc/letsencrypt/live/t.hottou.fr/fullchain.pem",
             "/etc/letsencrypt/live/t.hottou.fr/privkey.pem",
         ));
+    }
+
+    fn host_proxy(hostname: &str) -> Box<dyn proxy::context::WithProxyContext> {
+        use proxy::context;
+
+        match hostname {
+            "t.hottou.fr" => Box::new(context::ProxyCompression::new_ctx()),
+            "cdn.modspot.fr" => Box::new((
+                context::ProxyCompression::new_ctx(),
+                context::RefererFilter::<ModspotRefererFilter>::new_ctx(),
+                context::RateLimit::<ModspotSignupLimiting>::new_ctx(),
+            )),
+            _ => Box::new(()),
+        }
     }
 }
 
@@ -59,21 +67,9 @@ fn main() {
     let mut server = cai_reverse_proxy::server();
 
     use cai_reverse_proxy::proxy::events::logging;
-    let logger = logging::global_logger((&PhotographyWebsiteService, &ModspotCdnService));
+    let logger = logging::global_logger(&ProxyService);
 
-    cai_reverse_proxy::service::<
-        (
-            proxy::context::ProxyCompression,
-            proxy::context::RefererFilter<ModspotRefererFilter>,
-            proxy::context::RateLimit<ModspotSignupLimiting>,
-        ),
-        logging::Logger,
-    >(&mut server, &ModspotCdnService);
-
-    cai_reverse_proxy::service::<proxy::context::ProxyCompression, logging::Logger>(
-        &mut server,
-        &PhotographyWebsiteService,
-    );
+    cai_reverse_proxy::service::<logging::Logger, ProxyService>(&mut server);
 
     logger.start().expect("flexi_logger start error");
     server.run_forever();

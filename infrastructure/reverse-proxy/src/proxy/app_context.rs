@@ -1,4 +1,7 @@
-use crate::proxy::{HostConfigPlain, app::ProxyApp};
+use crate::{
+    WithServerService,
+    proxy::{HostConfigPlain, app::ProxyApp, context::WithProxyContext},
+};
 
 pub struct AppContextHostCache {
     index: usize,
@@ -16,13 +19,13 @@ impl AppContextHostCache {
         self.index
     }
 
-    pub fn host<'a, CONTEXT, EVENTS>(
+    pub fn host<'a, EVENTS, SERVICE>(
         &self,
-        app_context: &'a ProxyApp<CONTEXT, EVENTS>,
+        app_context: &'a ProxyApp<EVENTS, SERVICE>,
     ) -> Option<&'a HostConfigPlain>
     where
-        CONTEXT: super::context::WithProxyContext + Send + Sync,
         EVENTS: super::events::WithProxyEvents + Send + Sync,
+        SERVICE: WithServerService + Send + Sync + 'static,
     {
         app_context.get_host_by_index(self.cached_host_index())
     }
@@ -30,16 +33,16 @@ impl AppContextHostCache {
 
 pub type InternalContext = AppContextHostCache;
 
-pub struct AppContext<CONTEXT> {
+pub struct AppContext {
     pub internal: InternalContext,
-    pub public: CONTEXT,
+    pub public: Box<dyn WithProxyContext>,
 }
 
-impl<CONTEXT> AppContext<CONTEXT> {
-    pub fn new(public: CONTEXT) -> Self {
+impl AppContext {
+    pub fn new(public: impl WithProxyContext + 'static) -> Self {
         Self {
             internal: AppContextHostCache::new(),
-            public,
+            public: Box::new(public),
         }
     }
 

@@ -7,8 +7,9 @@ use pingora::{
     tls::{self, ssl},
 };
 
-use crate::proxy::{
-    HostConfigPlain, app::ProxyApp, context::WithProxyContext, events::WithProxyEvents,
+use crate::{
+    WithServerService,
+    proxy::{HostConfigPlain, app::ProxyApp, events::WithProxyEvents},
 };
 
 #[derive(Clone)]
@@ -96,15 +97,15 @@ impl TlsAccept for TlsHandler {
     }
 }
 
-pub fn proxy_service_tls<'server, 'service, CONTEXT, EVENTS>(
+pub fn proxy_service_tls<'server, 'service, EVENTS, SERVICE>(
     server_conf: &'server Arc<ServerConf>,
     listen_addr: &str,
     host_configs: Vec<HostConfigTls>,
-) -> impl pingora::services::Service + use<'service, CONTEXT, EVENTS>
+) -> impl pingora::services::Service + use<'service, EVENTS, SERVICE>
 where
     'service: 'server,
-    CONTEXT: WithProxyContext + 'static,
     EVENTS: WithProxyEvents + 'static,
+    SERVICE: WithServerService + 'static + Send + Sync,
 {
     let plain_host_config = host_configs
         .iter()
@@ -115,7 +116,7 @@ where
         })
         .collect();
 
-    let proxy_app = ProxyApp::<CONTEXT, EVENTS>::new(plain_host_config);
+    let proxy_app = ProxyApp::<EVENTS, SERVICE>::new(plain_host_config);
     let mut service = http_proxy_service(server_conf, proxy_app);
 
     let cb = TlsHandler::new(host_configs);

@@ -48,23 +48,6 @@ pub fn global_logger(services: impl WithServiceLogging) -> flexi_logger::Logger 
     services.enable_logging(logger)
 }
 
-#[deprecated]
-pub fn enable_service_logging<SERVICE: crate::WithReverseProxy>(
-    mut logger: flexi_logger::Logger,
-    service: &SERVICE,
-) -> flexi_logger::Logger {
-    let mut configs = Vec::new();
-    service.register_https(&mut configs);
-
-    for config in configs {
-        let hostname = &config.proxy_hostname;
-
-        logger = logger.add_writer(hostname, file_writer(hostname));
-    }
-
-    logger
-}
-
 fn file_writer(hostname: &str) -> Box<FileLogWriter> {
     Box::new(
         FileLogWriter::builder(
@@ -98,7 +81,7 @@ impl WithServiceLogging for () {
 impl<S: crate::WithReverseProxy> WithServiceLogging for &S {
     fn enable_logging(&self, mut logger: flexi_logger::Logger) -> flexi_logger::Logger {
         let mut configs = Vec::new();
-        self.register_https(&mut configs);
+        S::register_https(&mut configs);
 
         for config in configs {
             let hostname = &config.proxy_hostname;

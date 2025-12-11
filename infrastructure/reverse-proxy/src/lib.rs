@@ -3,11 +3,15 @@ use pingora::prelude::*;
 mod filtering;
 pub mod proxy;
 
+use proxy::context::*;
+
 pub trait WithServerService: WithReverseProxy {}
 
 pub trait WithReverseProxy {
-    fn register_http(&self, _: &mut Vec<proxy::HostConfigPlain>) {}
-    fn register_https(&self, _: &mut Vec<proxy::HostConfigTls>) {}
+    fn register_http(_: &mut Vec<proxy::HostConfigPlain>) {}
+    fn register_https(_: &mut Vec<proxy::HostConfigTls>) {}
+
+    fn host_proxy(hostname: &str) -> Box<dyn WithProxyContext>;
 }
 
 pub fn server() -> pingora::server::Server {
@@ -16,18 +20,16 @@ pub fn server() -> pingora::server::Server {
     server
 }
 
-pub fn service<CONTEXT, EVENTS>(
-    server: &mut pingora::server::Server,
-    service: &impl WithServerService,
-) where
-    CONTEXT: proxy::context::WithProxyContext + 'static,
+pub fn service<EVENTS, SERVICE>(server: &mut pingora::server::Server)
+where
     EVENTS: proxy::events::WithProxyEvents + 'static,
+    SERVICE: WithServerService + Send + Sync + 'static,
 {
     let port_https = 443;
     let mut proxy_tls_configs = Vec::new();
-    WithReverseProxy::register_https(service, &mut proxy_tls_configs);
+    SERVICE::register_https(&mut proxy_tls_configs);
 
-    let proxy_service_ssl = proxy::proxy_service_tls::<CONTEXT, EVENTS>(
+    let proxy_service_ssl = proxy::proxy_service_tls::<EVENTS, SERVICE>(
         &server.configuration,
         &format!("0.0.0.0:{port_https}"),
         proxy_tls_configs,
