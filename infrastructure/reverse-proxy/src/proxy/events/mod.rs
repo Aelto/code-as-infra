@@ -6,7 +6,14 @@ pub use logging::Logger;
 pub trait WithProxyEvents: Send + Sync + Sized {
     fn new() -> Self;
 
-    fn logging(&self, _session: &mut Session, _e: Option<&pingora::Error>, _target: &str) {}
+    fn logging(
+        &self,
+        _session: &mut Session,
+        _e: Option<&pingora::Error>,
+        _target: &str,
+        _internal: &super::app_context::InternalContext,
+    ) {
+    }
 }
 
 impl WithProxyEvents for () {
@@ -24,9 +31,15 @@ where
         (PE1::new(), PE2::new())
     }
 
-    fn logging(&self, _session: &mut Session, _e: Option<&pingora::Error>, target: &str) {
-        self.0.logging(_session, _e, target);
-        self.1.logging(_session, _e, target);
+    fn logging(
+        &self,
+        _session: &mut Session,
+        _e: Option<&pingora::Error>,
+        target: &str,
+        _internal: &super::app_context::InternalContext,
+    ) {
+        self.0.logging(_session, _e, target, _internal);
+        self.1.logging(_session, _e, target, _internal);
     }
 }
 
@@ -40,10 +53,16 @@ where
         (PE1::new(), PE2::new(), PE3::new())
     }
 
-    fn logging(&self, _session: &mut Session, _e: Option<&pingora::Error>, target: &str) {
-        self.0.logging(_session, _e, target);
-        self.1.logging(_session, _e, target);
-        self.2.logging(_session, _e, target);
+    fn logging(
+        &self,
+        _session: &mut Session,
+        _e: Option<&pingora::Error>,
+        target: &str,
+        _internal: &super::app_context::InternalContext,
+    ) {
+        self.0.logging(_session, _e, target, _internal);
+        self.1.logging(_session, _e, target, _internal);
+        self.2.logging(_session, _e, target, _internal);
     }
 }
 
@@ -58,10 +77,16 @@ where
         (PE1::new(), PE2::new(), PE3::new(), PE4::new())
     }
 
-    fn logging(&self, _session: &mut Session, _e: Option<&pingora::Error>, target: &str) {
-        self.0.logging(_session, _e, target);
-        self.1.logging(_session, _e, target);
-        self.2.logging(_session, _e, target);
-        self.3.logging(_session, _e, target);
+    fn logging(
+        &self,
+        _session: &mut Session,
+        _e: Option<&pingora::Error>,
+        target: &str,
+        _internal: &super::app_context::InternalContext,
+    ) {
+        self.0.logging(_session, _e, target, _internal);
+        self.1.logging(_session, _e, target, _internal);
+        self.2.logging(_session, _e, target, _internal);
+        self.3.logging(_session, _e, target, _internal);
     }
 }

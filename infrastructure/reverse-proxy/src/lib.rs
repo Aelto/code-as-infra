@@ -15,7 +15,12 @@ pub trait WithReverseProxy {
 }
 
 pub fn server() -> pingora::server::Server {
-    let mut server = Server::new(None).expect("pingora server creation");
+    let mut server = Server::new(Some(Opt {
+        daemon: false,
+
+        ..Default::default()
+    }))
+    .expect("pingora server creation");
     server.bootstrap();
     server
 }

@@ -10,16 +10,25 @@ impl super::WithProxyEvents for Logger {
         session: &mut pingora::prelude::Session,
         _e: Option<&pingora::Error>,
         target: &str,
+        _internal: &crate::proxy::app_context::InternalContext,
     ) {
         if let Some(ip) = session.client_addr().and_then(|addr| addr.as_inet()) {
             let level = log::Level::Info;
             let uri = &session.req_header().uri;
 
+            let now = {
+                let format = flexi_logger::TS_DASHES_BLANK_COLONS_DOT_BLANK;
+
+                flexi_logger::DeferredNow::new().now().format(format)
+            };
+
             log::log!(
               target: target,
               level,
-              "[{}] - {}",
+              "{} [{}] - [{}] - {}",
+              now,
               ip,
+              target,
               uri
             );
         }

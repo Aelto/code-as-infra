@@ -147,10 +147,9 @@ where
     ) where
         Self::CTX: Send + Sync,
     {
-        for host in &self.host_configs {
-            let hostname = &host.proxy_hostname;
-
-            self.events.logging(_session, _e, &hostname);
+        if let Some(host) = _ctx.hostname_cache().host(self) {
+            self.events
+                .logging(_session, _e, &host.proxy_hostname, &_ctx.internal);
         }
     }
 }
