@@ -7,4 +7,4 @@ run:
 post:
   curl http://localhost:3000/mails \
     --request POST --header "Content-Type: application/json" \
-    --data '{"from": "contact@from.dev", "to": "contact@to.dev", "title": "mail title", "body": "mail body"}'
+    --data '{"from": "contact@from.dev", "to": ["contact@to.dev"], "title": "mail title", "body": "mail body"}'

@@ -26,10 +26,10 @@ func open_server() {
 		log.Printf("received request on %q", html.EscapeString(r.URL.Path))
 
 		type Body struct {
-			From  string `json:"from"`
-			To    string `json:"to"`
-			Title string `json:"title"`
-			Body  string `json:"body"`
+			From  string   `json:"from"`
+			To    []string `json:"to"`
+			Title string   `json:"title"`
+			Body  string   `json:"body"`
 		}
 
 		form, err := deserializeBody[Body](r)
