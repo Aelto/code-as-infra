@@ -1,4 +1,4 @@
-dotenv-load := true
+set dotenv-load := true
 
 
 run:

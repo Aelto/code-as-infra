@@ -7,7 +7,6 @@ type WithConfigOptions interface {
 	Smtp_password() string
 	Smtp_address() string
 	Smtp_port() string
-	Brevo_api_key() string
 }
 
 type EnvConfigProvider struct{}
@@ -30,8 +29,4 @@ func (o EnvConfigProvider) Smtp_address() string {
 
 func (o EnvConfigProvider) Smtp_port() string {
 	return os.Getenv("SMTP_PORT")
-}
-
-func (o EnvConfigProvider) Brevo_api_key() string {
-	return os.Getenv("BREVO_API_KEY")
 }

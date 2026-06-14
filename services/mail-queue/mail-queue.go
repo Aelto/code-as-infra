@@ -2,25 +2,20 @@ package main
 
 import (
 	"encoding/json"
-	"fmt"
 	"html"
 	"log"
 	"net/http"
 )
 
 func main() {
-	fmt.Println("Hello, World!")
+	log.Println("starting mail-queue server")
+	log.Println("=> POST /mails to send a mail request")
 
 	open_server()
 }
 
 func open_server() {
 	sender := MakeMailSender(MakeEnvConfigProvider())
-
-	http.HandleFunc("GET /mails", func(w http.ResponseWriter, r *http.Request) {
-		log.Printf("received request on %q", html.EscapeString(r.URL.Path))
-
-	})
 
 	http.HandleFunc("POST /mails", func(w http.ResponseWriter, r *http.Request) {
 		log.Printf("received request on %q", html.EscapeString(r.URL.Path))
@@ -38,7 +33,7 @@ func open_server() {
 			return
 		}
 
-		sender.SendMail(makeMailRequest(form.From, form.To, form.Title, form.Body))
+		go sender.SendMail(makeMailRequest(form.From, form.To, form.Title, form.Body))
 	})
 
 	log.Fatal(http.ListenAndServe(":3000", nil))

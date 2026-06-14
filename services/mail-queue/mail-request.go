@@ -18,7 +18,3 @@ func makeMailRequest(from string, to []string, title string, body string) MailRe
 
 	return MailRequest{from, to, title, body, created_at}
 }
-
-func (request *MailRequest) send() {
-
-}
