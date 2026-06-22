@@ -106,7 +106,14 @@ where
             host_config.proxy_hostname.clone(),
         );
 
-        let peer = Box::new(proxy_to);
+        #[allow(unused_mut)]
+        let mut peer = Box::new(proxy_to);
+
+        #[cfg(feature = "http2")]
+        {
+            peer.options.alpn = pingora::protocols::ALPN::H2H1;
+        }
+
         Ok(peer)
     }
 

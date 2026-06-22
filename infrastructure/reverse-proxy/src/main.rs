@@ -3,6 +3,13 @@ use cai_reverse_proxy::{proxy::context::WithProxyContextCreation, *};
 struct ProxyService;
 impl cai_reverse_proxy::WithServerService for ProxyService {}
 impl cai_reverse_proxy::WithReverseProxy for ProxyService {
+    // fn register_http(services: &mut Vec<proxy::HostConfigPlain>) {
+    //     services.push(proxy::HostConfigPlain::new_localhost_service(
+    //         3000,
+    //         "modspot.dev",
+    //     ));
+    // }
+
     fn register_https(services: &mut Vec<proxy::HostConfigTls>) {
         services.push(proxy::HostConfigTls::new_localhost_service(
             5010,

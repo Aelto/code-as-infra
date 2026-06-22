@@ -2,7 +2,6 @@
 
 mod certificate;
 pub use certificate::Certificate;
-pub use certificate::prefer_h2;
 
 mod certificate_cache;
 pub use certificate_cache::CertificateCache;

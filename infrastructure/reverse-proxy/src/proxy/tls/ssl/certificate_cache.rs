@@ -1,4 +1,4 @@
-use pingora::tls::ssl::{NameType, SniError, SslAlert, SslRef};
+use pingora::tls::ssl::{NameType, SniError, SslRef};
 
 use crate::proxy::HostConfigTls;
 
@@ -28,15 +28,16 @@ impl CertificateCache {
     pub fn on_ssl_server_name_callback(&self, ssl_ref: &mut SslRef) -> Result<(), SniError> {
         let server_name = ssl_ref.servername(NameType::HOST_NAME);
 
-        println!("server_name sni = {server_name:?}");
-
         if let Some(sni) = server_name {
             let certificate = self.certificates.iter().find(|cert| cert.matches_sni(sni));
-            dbg!(&certificate);
 
             if let Some(certificate) = certificate {
                 certificate.set_ssl_context(ssl_ref);
+            } else {
+                log::error!("SslRef with HOST_NAME={sni} did not match any certificate");
             }
+        } else {
+            log::error!("SslRef does not contain any HOST_NAME");
         }
 
         Ok(())

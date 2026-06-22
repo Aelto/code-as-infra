@@ -6,7 +6,7 @@ use pingora::{
     server::configuration::ServerConf,
     tls::{
         self,
-        ssl::{NameType, SslAlert, SslRef, SslVersion},
+        ssl::{NameType, SslAlert, SslRef},
     },
 };
 
@@ -142,13 +142,6 @@ where
 
     let mut service = http_proxy_service(server_conf, proxy_app);
 
-    // let cb = TlsHandler::new(host_configs.clone());
-    // let cb = Box::new(cb);
-
-    // ssl_ciphers ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-CHACHA20-POLY1305:ECDHE-RSA-CHACHA20-POLY1305:DHE-RSA-AES128-GCM-SHA256:DHE-RSA-AES256-GCM-SHA384
-    // ssl_protocols TLSv1.2 TLSv1.3
-    // let mut tls_settings = TlsSettings::with_callbacks(cb).unwrap();
-
     let first_config = host_configs
         .first()
         .expect("at least one TLS config is needed");
@@ -161,19 +154,10 @@ where
         certificate_cache.on_ssl_server_name_callback(ssl_ref)
     });
 
-    // TlsSettings::intermediate(cert_path, key_path)
-
-    // breaks everything
-    // tls_settings.set_alpn(pingora::protocols::ALPN::H2H1);
-
-    // tls_settings.enable_h2();
-    // tls_settings.set_alpn_select_callback(ssl::prefer_h2);
-
-    // tls_settings.set_cipher_list("ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-CHACHA20-POLY1305:ECDHE-RSA-CHACHA20-POLY1305:DHE-RSA-AES128-GCM-SHA256:DHE-RSA-AES256-GCM-SHA384").unwrap();
-
-    // tls_settings
-    //     .set_min_proto_version(Some(SslVersion::TLS1_2))
-    //     .unwrap();
+    #[cfg(feature = "http2")]
+    {
+        tls_settings.enable_h2();
+    }
 
     service.add_tls_with_settings(listen_addr, None, tls_settings);
 

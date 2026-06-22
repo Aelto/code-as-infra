@@ -3,6 +3,12 @@ name = "cai-reverse-proxy"
 version = "0.1.0"
 edition = "2024"
 
+[features]
+default = ["http2"]
+
+# adds support for http2
+http2 = []
+
 [dependencies]
 pingora = { version="0.8.1", features=["lb", "proxy", "openssl"] }
 bytes = "1.0"

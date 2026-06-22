@@ -30,15 +30,29 @@ where
     EVENTS: proxy::events::WithProxyEvents + 'static,
     SERVICE: WithServerService + Send + Sync + 'static,
 {
-    let port_https = 443;
     let mut proxy_tls_configs = Vec::new();
     SERVICE::register_https(&mut proxy_tls_configs);
+    if !proxy_tls_configs.is_empty() {
+        let port_https = 443;
+        let proxy_service_ssl = proxy::proxy_service_tls::<EVENTS, SERVICE>(
+            &server.configuration,
+            &format!("0.0.0.0:{port_https}"),
+            proxy_tls_configs,
+        );
 
-    let proxy_service_ssl = proxy::proxy_service_tls::<EVENTS, SERVICE>(
-        &server.configuration,
-        &format!("0.0.0.0:{port_https}"),
-        proxy_tls_configs,
-    );
+        server.add_service(proxy_service_ssl);
+    }
 
-    server.add_service(proxy_service_ssl);
+    let mut proxy_plain_configs = Vec::new();
+    SERVICE::register_http(&mut proxy_plain_configs);
+    if !proxy_plain_configs.is_empty() {
+        let port_http = 80;
+        let proxy_service_plain = proxy::proxy_service_plain::<EVENTS, SERVICE>(
+            &server.configuration,
+            &format!("0.0.0.0:{port_http}"),
+            proxy_plain_configs,
+        );
+
+        server.add_service(proxy_service_plain);
+    }
 }
