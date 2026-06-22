@@ -20,3 +20,18 @@ deploy-build-cross-rpi-release:
 
 podman-start:
   podman machine start
+
+dockerfile-build:
+  podman build ../../ --rm --tag cai-reverse-proxy -f cai-reverse-proxy.Dockerfile
+
+compose-start:
+  podman compose -p cai-reverse-proxy -f docker/cai-reverse-proxy/docker-compose.yml start
+
+compose-up:
+  podman compose -p cai-reverse-proxy -f docker/cai-reverse-proxy/docker-compose.yml up
+
+compose-stop:
+  podman compose -p cai-reverse-proxy -f docker/cai-reverse-proxy/docker-compose.yml stop
+
+compose-ls:
+  podman compose -p cai-reverse-proxy -f docker/cai-reverse-proxy/docker-compose.yml ls
