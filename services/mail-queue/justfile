@@ -8,3 +8,15 @@ post:
   curl http://localhost:3000/mails \
     --request POST --header "Content-Type: application/json" \
     --data '{"from": "contact@from.dev", "to": ["contact@to.dev"], "title": "mail title", "body": "mail body"}'
+
+
+build: dockerfile-build podman-save
+
+# requires qemu stuff to emulate arm64
+dockerfile-build:
+    podman build . --no-cache --rm --tag mailqueue -f ./quadlet/mailqueue.Dockerfile
+
+# saves the docker image into a `.tar` file
+podman-save:
+    rm -f quadlet/mailqueue-image.tar
+    podman save --output quadlet/mailqueue-image.tar localhost/mailqueue
