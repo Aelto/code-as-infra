@@ -1,4 +1,4 @@
-FROM docker.io/golang:1.26-alpine
+FROM docker.io/golang:1.26-alpine AS build
 
 WORKDIR /app
 COPY go.mod ./
@@ -7,6 +7,9 @@ COPY **.go ./
 
 RUN CGO_ENABLED=0 GOOS=linux go build -o /mailqueue
 
-EXPOSE 3000
+FROM gcr.io/distroless/static-debian13 as release
 
+COPY --from=build /mailqueue /mailqueue
+
+EXPOSE 3000
 CMD [ "/mailqueue" ]
