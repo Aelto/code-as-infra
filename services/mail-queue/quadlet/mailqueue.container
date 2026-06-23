@@ -1,0 +1,18 @@
+# refer to the justfile in the current folder to see how to deploy it.
+[Unit]
+Description=code-as-infra mailqueue
+After=network-online.target
+
+[Container]
+# Base options
+ContainerName=mailqueue
+Image=docker-archive:/etc/containers/systemd/mailqueue/mailqueue-image.tar
+
+# Network options
+PublishPort=3000:3000
+
+[Service]
+Restart=on-failure
+
+[Install]
+WantedBy=default.target

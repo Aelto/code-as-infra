@@ -1,0 +1,11 @@
+# installs the `.container` file on the current host
+container-install: && systemd-reload systemd-start-service
+  sudo mkdir -p /etc/containers/systemd/mailqueue
+  sudo cp mailqueue.container /etc/containers/systemd/mailqueue/
+  sudo cp mailqueue-image.tar /etc/containers/systemd/mailqueue/
+
+systemd-reload:
+  sudo systemctl daemon-reload
+
+systemd-start-service:
+  sudo systemctl start mailqueue.service
