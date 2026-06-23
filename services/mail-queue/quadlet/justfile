@@ -1,5 +1,5 @@
 # installs the `.container` file on the current host
-container-install: && systemd-reload systemd-start-service
+container-install: dockerfile-build podman-save && systemd-reload systemd-start-service
   sudo mkdir -p /etc/containers/systemd/mailqueue
   sudo cp mailqueue.container /etc/containers/systemd/mailqueue/
   sudo cp mailqueue-image.tar /etc/containers/systemd/mailqueue/
@@ -9,3 +9,11 @@ systemd-reload:
 
 systemd-start-service:
   sudo systemctl start mailqueue.service
+
+dockerfile-build:
+    podman build .. --no-cache --rm --tag mailqueue -f ./mailqueue.Dockerfile
+
+# saves the docker image into a `.tar` file
+podman-save:
+    rm -f ./mailqueue-image.tar
+    podman save --output ./mailqueue-image.tar localhost/mailqueue
