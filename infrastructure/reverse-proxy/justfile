@@ -1,37 +1,42 @@
-set shell := ["nu", "-c"]
-
 list:
-  just --list
+    just --list
 
-# requires podman and `cargo install cross-rs`
-build-cross-rpi:
-  cross build --target=aarch64-unknown-linux-gnu
+build: dockerfile-build podman-save
 
-build-cross-rpi-release:
-  cross build --release --target=aarch64-unknown-linux-gnu
+build-and-deploy: build && deploy-container
 
-deploy-build-cross-rpi:
-  scp ../../target/aarch64-unknown-linux-gnu/debug/cai-reverse-proxy-example rpi:~/cai-reverse-proxy-example
-  ssh rpi "sudo chmod +x ~/cai-reverse-proxy-example"
+
+# requires qemu stuff to emulate arm64
+dockerfile-build: compile-cross-rpi
+    podman build ../../ --no-cache --rm --tag cai-reverse-proxy -f ./quadlet/cai-reverse-proxy.Dockerfile
+
+# saves the docker image into a `.tar` file
+podman-save:
+    rm -f quadlet/cai-reverse-proxy-image.tar
+    podman save --output quadlet/cai-reverse-proxy-image.tar localhost/cai-reverse-proxy
+
+# building an ARM64 image while on a AMD64 WSL may be difficult, QEMU can be used
+# to emulate ARM.
+podman-wsl-arm-compatibility:
+    sudo apt install qemu-user-static
+    sudo podman run --rm --privileged docker.io/multiarch/qemu-user-static --reset -p yes
+
+######################## deployment
+
+deploy-container:
+    scp quadlet/cai-reverse-proxy-image.tar rpi:~/cai-reverse-proxy-image.tar
+    ssh rpi "podman load -i ~/cai-reverse-proxy-image.tar"
 
 deploy-build-cross-rpi-release:
-  scp ../../target/aarch64-unknown-linux-gnu/release/cai-reverse-proxy-example rpi:~/cai-reverse-proxy-example
-  ssh rpi "sudo chmod +x ~/cai-reverse-proxy-example"
+    scp ../../target/aarch64-unknown-linux-musl/release/cai-reverse-proxy-example rpi:~/cai-reverse-proxy-example
+    ssh rpi "sudo chmod +x ~/cai-reverse-proxy-example"
 
-podman-start:
-  podman machine start
+######################## compilation
+#
 
-dockerfile-build:
-  podman build ../../ --rm --tag cai-reverse-proxy -f cai-reverse-proxy.Dockerfile
+# requires podman and `cargo install cross-rs`
+compile-cross-rpi:
+    cross build --target=aarch64-unknown-linux-musl --release
 
-compose-start:
-  podman compose -p cai-reverse-proxy -f docker/cai-reverse-proxy/docker-compose.yml start
-
-compose-up:
-  podman compose -p cai-reverse-proxy -f docker/cai-reverse-proxy/docker-compose.yml up
-
-compose-stop:
-  podman compose -p cai-reverse-proxy -f docker/cai-reverse-proxy/docker-compose.yml stop
-
-compose-ls:
-  podman compose -p cai-reverse-proxy -f docker/cai-reverse-proxy/docker-compose.yml ls
+compile:
+    cargo build --release

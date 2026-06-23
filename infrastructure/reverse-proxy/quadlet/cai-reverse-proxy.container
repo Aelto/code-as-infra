@@ -1,0 +1,25 @@
+[Unit]
+Description=code-as-infra reverse proxy
+After=network-online.target
+
+[Container]
+Image=localhost/cai-reverse-proxy:latest
+ContainerName=cai-reverse-proxy
+AutoUpdate=registry
+
+
+# Network=host
+PublishPort=80:80
+PublishPort=443:443
+
+PublishPort=3000:3000
+PublishPort=5000:5000
+
+Volume=cai-reverse-proxy.volume:/logs:Z
+Volume=cai-reverse-proxy.volume:/etc/letsencrypt/live:Z
+
+[Service]
+Restart=on-failure
+
+[Install]
+WantedBy=default.target
