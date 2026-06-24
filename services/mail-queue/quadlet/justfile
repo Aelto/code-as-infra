@@ -3,7 +3,7 @@ container-install: dockerfile-build podman-save && systemd-reload systemd-start-
   sudo mkdir -p /etc/containers/systemd/mailqueue
   sudo cp mailqueue.container mailqueue-image.tar mailqueue.env /etc/containers/systemd/mailqueue/
 
-container-uninstall: && systemd-reload systemd-stop-service
+container-uninstall: && systemd-stop-service systemd-reload
   sudo rm -rf /etc/containers/systemd/mailqueue
 
 systemd-reload:
