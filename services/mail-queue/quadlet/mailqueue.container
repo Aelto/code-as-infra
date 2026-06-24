@@ -10,6 +10,7 @@ Image=docker-archive:/etc/containers/systemd/mailqueue/mailqueue-image.tar
 
 # Network options
 PublishPort=3000:3000
+EnvironmentFile=mailqueue.env
 
 [Service]
 Restart=on-failure

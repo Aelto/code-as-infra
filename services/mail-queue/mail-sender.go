@@ -2,6 +2,7 @@ package main
 
 import (
 	"crypto/tls"
+	"fmt"
 	"log"
 	"net/smtp"
 	"strings"
@@ -12,6 +13,8 @@ type MailSender struct {
 }
 
 func MakeMailSender(config WithConfigOptions) MailSender {
+	fmt.Printf("SMTP server: address=%s, port=%s\n", config.Smtp_address(), config.Smtp_port())
+
 	return MailSender{config}
 }
 
