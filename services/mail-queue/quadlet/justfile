@@ -22,3 +22,6 @@ dockerfile-build:
 podman-save:
     rm -f ./mailqueue-image.tar
     podman save --output ./mailqueue-image.tar localhost/mailqueue
+
+release-make-zip:
+  zip -r mailqueue.release.zip mailqueue.container mailqueue.env mailqueue-image.tar
